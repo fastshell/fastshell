@@ -1,9 +1,109 @@
+import shlex
 from pydantic import BaseModel, ValidationError
 from .exceptions import MultiplePossibleMatchError
 
 
 class ArgumentParser:
     """Parse command line arguments into Pydantic models"""
+
+    def parse_args_from_string(self, args_string: str, model: type[BaseModel]) -> BaseModel:
+        """Parse arguments from string while handling quotes properly"""
+        if not args_string.strip():
+            return model()
+
+        # For registered commands, we want standard shell behavior:
+        # - Remove outer wrapping quotes: "Hello" -> Hello  
+        # - Preserve embedded quotes: H"embedded"W -> H"embedded"W
+        
+        # First, try to detect if we have embedded quotes that shlex might mishandle
+        has_embedded_quotes = self._has_embedded_quotes(args_string)
+        
+        if has_embedded_quotes:
+            # Use our smart parsing for embedded quotes
+            try:
+                tokens = self._smart_split_preserving_quotes(args_string)
+                return self.parse_args(tokens, model)
+            except Exception:
+                # If smart parsing fails, fall back to shlex
+                pass
+        
+        try:
+            # Use shlex for standard shell quote handling
+            tokens = shlex.split(args_string)
+            return self.parse_args(tokens, model)
+        except ValueError:
+            # If shlex fails due to unmatched quotes, try smart parsing
+            try:
+                tokens = self._smart_split_preserving_quotes(args_string)
+                return self.parse_args(tokens, model)
+            except Exception:
+                pass
+        except Exception:
+            # If model validation fails, re-raise the validation error
+            raise
+        
+        # Final fallback: simple split (should rarely be needed)
+        tokens = args_string.split()
+        return self.parse_args(tokens, model)
+    
+    def _has_embedded_quotes(self, text: str) -> bool:
+        """Check if text has embedded quotes (quotes not at start/end of tokens)"""
+        import re
+        # Look for patterns like: word"quote"word or word'quote'word
+        embedded_pattern = r'\w+["\'][^"\']*["\'][^\s]*|\w*["\'][^"\']*["\']\w+'
+        return bool(re.search(embedded_pattern, text))
+    
+    def _smart_split_preserving_quotes(self, text: str) -> list[str]:
+        """Split text while preserving embedded quotes"""
+        import re
+        
+        # This regex finds words that may contain embedded quotes
+        # It matches sequences of non-whitespace characters, including quoted sections
+        pattern = r'(?:[^\s"\']+|"[^"]*"|\'[^\']*\')+|\S+'
+        
+        tokens = []
+        for match in re.finditer(pattern, text):
+            token = match.group(0)
+            
+            # Check if this looks like a flag
+            if token.startswith('--'):
+                tokens.append(token)
+            elif token.startswith('-') and len(token) > 1:
+                tokens.append(token)
+            else:
+                # For non-flag tokens, we need to handle quotes carefully
+                # If the token is completely wrapped in quotes, remove outer quotes
+                # But preserve embedded quotes
+                processed_token = self._process_token_quotes(token)
+                tokens.append(processed_token)
+        
+        return tokens
+    
+    def _process_token_quotes(self, token: str) -> str:
+        """Process quotes in a single token, removing outer quotes but preserving embedded ones"""
+        # If the token is completely wrapped in quotes, remove them
+        if ((token.startswith('"') and token.endswith('"') and len(token) > 1) or
+            (token.startswith("'") and token.endswith("'") and len(token) > 1)):
+            # Check if it's truly wrapped (no unescaped quotes inside)
+            inner = token[1:-1]
+            quote_char = token[0]
+            
+            # Simple check: if there are no unescaped quotes of the same type inside, it's wrapped
+            if quote_char == '"':
+                # Check for unescaped quotes
+                escaped_quotes = inner.count('\\"')
+                total_quotes = inner.count('"')
+                if total_quotes == escaped_quotes:  # All quotes are escaped
+                    return inner
+            else:  # single quote
+                # Check for unescaped quotes  
+                escaped_quotes = inner.count("\\'")
+                total_quotes = inner.count("'")
+                if total_quotes == escaped_quotes:  # All quotes are escaped
+                    return inner
+        
+        # Otherwise, return as-is (preserves embedded quotes)
+        return token
 
     def parse_args(self, args: list[str], model: type[BaseModel]) -> BaseModel:
         """Parse arguments list into model instance"""

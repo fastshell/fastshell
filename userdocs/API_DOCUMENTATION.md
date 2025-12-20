@@ -1,41 +1,40 @@
 # FastShell API Documentation
 
-FastShell is a FastAPI-like interactive shell framework that allows you to build command-line applications with decorator-based command registration, automatic argument parsing, and rich interactive features.
+FastShell is a FastAPI-like framework for building interactive command-line applications with shell-like interfaces.
 
 ## Table of Contents
 
+- [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Core Classes](#core-classes)
 - [Decorators](#decorators)
-- [Command Registration](#command-registration)
+- [Command Definition](#command-definition)
 - [Argument Parsing](#argument-parsing)
 - [Interactive Features](#interactive-features)
 - [System Commands](#system-commands)
-- [Subinstances](#subinstances)
+- [Subcommands](#subcommands)
+- [Quote Handling](#quote-handling)
 - [Error Handling](#error-handling)
-- [Examples](#examples)
+- [Advanced Features](#advanced-features)
+
+## Installation
+
+```bash
+pip install fastshell
+```
 
 ## Quick Start
 
 ```python
 from fastshell import FastShell
-from pydantic import BaseModel
 
-# Create a shell application
-app = FastShell("MyApp", description="My awesome CLI application")
-
-# Define a command with Pydantic model
-class UserArgs(BaseModel):
-    name: str
-    age: int = 25
-    active: bool = True
+app = FastShell("MyApp", description="A sample FastShell application")
 
 @app.command()
-def create_user(args: UserArgs):
-    """Create a new user"""
-    return f"Created user {args.name}, age {args.age}, active: {args.active}"
+def hello(name: str = "World", age: int = 18):
+    """Greet someone with their age"""
+    return f"Hello, {name}! You are {age} years old."
 
-# Run the application
 if __name__ == "__main__":
     app.run()
 ```
@@ -44,23 +43,25 @@ if __name__ == "__main__":
 
 ### FastShell
 
-The main application class that manages commands, subinstances, and interactive features.
-
-#### Constructor
+The main application class that manages commands, subcommands, and the interactive shell.
 
 ```python
-FastShell(
-    name: str = "FastShell",
-    description: str = "",
-    allow_system_commands: bool = True
-)
+class FastShell:
+    def __init__(
+        self,
+        name: str = "FastShell",
+        description: str = "",
+        allow_system_commands: bool = True,
+    ):
+        """
+        Initialize a FastShell application.
+        
+        Args:
+            name: Application name displayed in prompts
+            description: Application description shown in help
+            allow_system_commands: Whether to enable system command execution
+        """
 ```
-
-**Parameters:**
-
-- `name`: Application name displayed in prompts and help
-- `description`: Application description shown in help
-- `allow_system_commands`: Enable system command execution
 
 #### Methods
 
@@ -68,503 +69,392 @@ FastShell(
 
 Decorator to register a command function.
 
-**Parameters:**
+```python
+@app.command()
+def my_command(arg1: str, arg2: int = 10):
+    """Command description"""
+    return f"Result: {arg1}, {arg2}"
 
-- `name`: Command name (defaults to function name)
-- `root`: Whether command can be called without explicit name in CLI mode
+@app.command("custom-name")
+def another_command():
+    """Command with custom name"""
+    pass
 
-**Returns:** Decorator function
+@app.command(root=True)
+def root_command():
+    """Root command (available in CLI mode without command name)"""
+    pass
+```
 
 ##### `subinstance(name: str, description: str = "") -> FastShell`
 
-Create a subcommand group (nested commands).
+Create a subcommand group.
 
-**Parameters:**
+```python
+# Create subcommand group
+aws = app.subinstance("aws", "AWS CLI-like commands")
 
-- `name`: Subinstance name
-- `description`: Subinstance description
+@aws.command()
+def list_instances():
+    """List EC2 instances"""
+    pass
 
-**Returns:** New FastShell instance for the subcommand group
+# Usage: myapp aws list-instances
+```
 
 ##### `run(args: Optional[List[str]] = None)`
 
 Run the application in CLI or interactive mode.
 
-**Parameters:**
+```python
+# Interactive mode (no arguments)
+app.run()
 
-- `args`: Command line arguments (if None, uses sys.argv)
-
-**Behavior:**
-
-- If args provided: CLI mode (execute once and exit)
-- If no args: Interactive mode (start shell session)
+# CLI mode (with arguments)
+app.run(["hello", "John", "--age", "25"])
+```
 
 ##### `run_interactive()`
 
-Start interactive shell session (async method).
+Start the interactive shell mode.
+
+```python
+await app.run_interactive()
+```
 
 ##### `execute_command(command_line: str, interactive_mode: bool = False)`
 
-Execute a command from string (async method).
+Execute a command from a command line string.
 
-**Parameters:**
-
-- `command_line`: Command string to execute
-- `interactive_mode`: Whether running in interactive mode
-
-##### `print(text: Any)`
-
-Safe print method that handles various data types including JSON serialization.
-
-### CommandInfo
-
-Internal class storing command metadata.
-
-**Attributes:**
-
-- `func`: Command function
-- `name`: Command name
-- `root`: Whether it's a root command
-- `model`: Pydantic model for arguments
-- `is_async`: Whether function is async
-- `doc`: Function docstring
+```python
+result = await app.execute_command("hello John --age 25")
+```
 
 ## Decorators
 
-### @app.command()
+### @command()
 
-Register a function as a command.
+Register a function as a command. The function signature is automatically analyzed to create argument parsing.
 
 ```python
-# Basic command
 @app.command()
-def hello():
-    """Say hello"""
-    return "Hello, World!"
-
-# Command with custom name
-@app.command("greet")
-def greeting():
-    """Greet the user"""
-    return "Greetings!"
-
-# Root command (can be called without name in CLI mode)
-@app.command(root=True)
-def default_action():
-    """Default action when no command specified"""
-    return "Default action executed"
+def process_data(
+    input_file: str,                    # Required positional argument
+    output_file: str = "output.txt",    # Optional with default
+    verbose: bool = False,              # Boolean flag
+    count: int = 1,                     # Integer argument
+    ratio: float = 1.0,                 # Float argument
+):
+    """Process data from input file to output file"""
+    pass
 ```
 
-## Command Registration
+## Command Definition
 
-### Using Pydantic Models
+### Function Signatures
+
+FastShell automatically creates argument parsers from function signatures:
+
+```python
+@app.command()
+def example(
+    required_arg: str,              # <required_arg>
+    optional_arg: str = "default",  # [--optional-arg=default]
+    flag: bool = False,             # [--flag]
+    number: int = 42,               # [--number=42]
+    decimal: float = 3.14,          # [--decimal=3.14]
+):
+    """Example command with various argument types"""
+    pass
+```
+
+### Pydantic Models
+
+You can also use Pydantic models for more complex validation:
 
 ```python
 from pydantic import BaseModel, Field
 
-class ServerArgs(BaseModel):
-    host: str = Field(default="localhost", description="Server host")
-    port: int = Field(default=8000, description="Server port")
-    debug: bool = Field(default=False, description="Enable debug mode")
+class UserData(BaseModel):
+    name: str = Field(description="User's name")
+    age: int = Field(ge=0, le=150, description="User's age")
+    email: str = Field(regex=r'^[^@]+@[^@]+\.[^@]+$', description="Valid email")
 
 @app.command()
-def start_server(args: ServerArgs):
-    """Start the development server"""
-    return f"Starting server on {args.host}:{args.port} (debug={args.debug})"
-```
-
-### Using Function Parameters
-
-```python
-@app.command()
-def deploy(environment: str, version: str = "latest", force: bool = False):
-    """Deploy application to environment"""
-    return f"Deploying {version} to {environment} (force={force})"
+def create_user(data: UserData):
+    """Create a new user"""
+    return f"Created user: {data.name} ({data.email})"
 ```
 
 ### Async Commands
 
-```python
-import asyncio
+FastShell supports async command functions:
 
+```python
 @app.command()
-async def fetch_data(url: str, timeout: int = 30):
+async def fetch_data(url: str):
     """Fetch data from URL"""
-    # Simulate async operation
-    await asyncio.sleep(1)
-    return f"Fetched data from {url} with timeout {timeout}s"
+    import aiohttp
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.text()
 ```
 
 ## Argument Parsing
 
-FastShell supports multiple argument input styles:
-
 ### Positional Arguments
 
+Arguments can be provided positionally:
+
 ```bash
-# Function: create_user(name: str, age: int = 25)
-create_user "John Doe" 30
+myapp hello John 25
 ```
 
 ### Flag Arguments
 
+Arguments can be provided as flags:
+
 ```bash
-# Same function
-create_user --name "John Doe" --age 30
+myapp hello --name John --age 25
+myapp hello -n John -a 25
 ```
 
-### Mixed Style
+### Mixed Usage
+
+Positional and flag arguments can be mixed:
 
 ```bash
-# Positional + flags
-create_user "John Doe" --age 30
+myapp hello John --age 25
 ```
 
 ### Boolean Flags
 
+Boolean arguments work as flags:
+
 ```bash
-# For boolean parameters
-deploy production --force        # force=True
-deploy production               # force=False (default)
+myapp process-data input.txt --verbose
+myapp process-data input.txt --verbose true
+myapp process-data input.txt --verbose false
 ```
-
-### Argument Types
-
-FastShell automatically handles type conversion for:
-
-- `str`: String values
-- `int`: Integer values
-- `float`: Floating point values
-- `bool`: Boolean flags
-- `List[T]`: Lists of values
-- Custom Pydantic models
 
 ## Interactive Features
 
+### Auto-completion
+
+FastShell provides intelligent auto-completion:
+
+- Command names
+- Subcommand names
+- Argument names (flags)
+- File paths
+- Argument values based on type
+
 ### Syntax Highlighting
 
-Commands, arguments, strings, and numbers are highlighted with different colors:
+Commands, arguments, strings, and numbers are highlighted with different colors.
 
-- **Commands**: Light blue (`#66aaff`)
-- **Arguments**: Light green (`#66dd66`)
-- **Strings**: Light orange (`#ffcc66`)
-- **Numbers**: Light purple (`#dd66dd`)
-- **Text**: Light gray (`#cccccc`)
+### History
 
-### Tab Completion
+Command history is maintained across the session with up/down arrow navigation.
 
-- Command name completion
-- Argument name completion
-- File path completion for system commands
-- Context-aware suggestions
+### Help System
 
-### Command History
+Comprehensive help is available:
 
-- Previous commands are saved and accessible with up/down arrows
-- Auto-suggestion from history
-
-### Built-in Commands
-
-- `help [command]`: Show help information
-- `exit` / `quit`: Exit the shell (main shell only)
-- `exec <command>`: Force system command execution
+```bash
+help                    # General help
+help command-name       # Specific command help
+help subcommand         # Subcommand help
+help sub cmd            # Nested command help
+```
 
 ## System Commands
 
-When `allow_system_commands=True`, FastShell provides:
-
-### Persistent Shell Context
-
-- Directory changes persist across commands
-- Environment variables maintained
-- Cross-platform support (Windows/Unix)
-
-### Interactive Command Support
-
-Commands like `python`, `vim`, `top` run with full keyboard interaction:
+When `allow_system_commands=True`, you can execute system commands directly:
 
 ```bash
-python          # Starts Python REPL with Ctrl+C support
-vim file.txt    # Opens vim with full keyboard support
+MyApp> ls -la
+MyApp> cd /path/to/directory
+MyApp> python script.py
+MyApp> exec echo "force system command"
 ```
 
-### System Command Examples
+### Persistent Context
 
-```bash
-# Directory operations
-cd /path/to/directory
-ls -la
-pwd
+System commands maintain persistent context:
+- Current directory changes persist
+- Environment variables persist
+- Command history is maintained
 
-# File operations
-cat file.txt
-grep "pattern" *.py
+### Interactive Commands
 
-# Development commands
-git status
-npm install
-python script.py
-```
+Interactive system commands (like `python`, `vim`, `nano`) work with full keyboard support including Ctrl+C handling.
 
-## Subinstances
+## Subcommands
 
 Create nested command structures:
 
 ```python
-# Create main app
-app = FastShell("CloudCLI", "Cloud management CLI")
+# Main app
+app = FastShell("myapp")
 
-# Create AWS subinstance
-aws = app.subinstance("aws", "AWS services")
-ec2 = aws.subinstance("ec2", "EC2 management")
-s3 = aws.subinstance("s3", "S3 management")
+# Create subcommand groups
+aws = app.subinstance("aws", "AWS commands")
+ec2 = aws.subinstance("ec2", "EC2 commands")
 
-# Add commands to subinstances
 @ec2.command()
-def list_instances(region: str = "us-east-1"):
+def list_instances():
     """List EC2 instances"""
-    return f"Listing instances in {region}"
+    pass
 
-@s3.command()
-def list_buckets():
-    """List S3 buckets"""
-    return "Listing S3 buckets"
+@ec2.command()
+def describe_instances(instance_id: str):
+    """Describe specific instance"""
+    pass
+
+# Usage:
+# myapp aws ec2 list-instances
+# myapp aws ec2 describe-instances i-1234567890
 ```
 
-Usage:
+## Quote Handling
+
+FastShell handles quotes intelligently:
+
+### Outer Quote Removal
+
+Outer wrapping quotes are removed (standard shell behavior):
 
 ```bash
-# Interactive mode
-aws ec2 list-instances --region us-west-2
-aws s3 list-buckets
+MyApp> hello "John"        # → Hello, John
+MyApp> echo "Hello World"  # → Hello World
+```
 
-# CLI mode
-python app.py aws ec2 list-instances --region us-west-2
+### Embedded Quote Preservation
+
+Embedded quotes are preserved:
+
+```bash
+MyApp> hello H"embedded"W  # → Hello, H"embedded"W
+MyApp> echo H"test"W       # → H"test"W
+```
+
+### Escaped Quotes
+
+Escaped quotes are handled correctly:
+
+```bash
+MyApp> hello "H\"Bang\"W"  # → Hello, H"Bang"W
+MyApp> echo H\"test\"W     # → H"test"W
 ```
 
 ## Error Handling
 
 ### Validation Errors
 
-FastShell provides clear error messages for invalid arguments:
+FastShell provides clear validation error messages:
 
 ```bash
-$ create_user --age "not_a_number"
-Error in command 'create_user':
-  --age: 'not_a_number' is not a valid integer.
+MyApp> hello --age abc
+Error in command 'hello':
+  --age: 'abc' is not a valid integer.
   Example: --age 25
 
-Use 'help create_user' for detailed usage information.
+Use 'help hello' for detailed usage information.
 ```
 
 ### Missing Arguments
 
 ```bash
-$ create_user
-Error in command 'create_user':
-  name: This argument is required.
-  Provide it as: name <str> or --name <str>
+MyApp> process-data
+Error in command 'process-data':
+  input-file: This argument is required.
+  Provide it as: input-file <str> or --input-file <str>
 ```
 
-### Custom Exception Handling
-
-```python
-from fastshell.exceptions import MultiplePossibleMatchError
-
-@app.command()
-def risky_operation():
-    """Operation that might fail"""
-    try:
-        # Your code here
-        pass
-    except Exception as e:
-        return f"Operation failed: {e}"
-```
-
-## Examples
-
-### Basic CLI Application
-
-```python
-from fastshell import FastShell
-from pydantic import BaseModel
-
-app = FastShell("FileTool", "File management utility")
-
-class CopyArgs(BaseModel):
-    source: str
-    destination: str
-    recursive: bool = False
-
-@app.command()
-def copy(args: CopyArgs):
-    """Copy files or directories"""
-    mode = "recursively" if args.recursive else ""
-    return f"Copying {args.source} to {args.destination} {mode}"
-
-@app.command()
-def list_files(path: str = ".", show_hidden: bool = False):
-    """List files in directory"""
-    hidden = "including hidden" if show_hidden else "excluding hidden"
-    return f"Listing files in {path} ({hidden})"
-
-if __name__ == "__main__":
-    app.run()
-```
-
-### Complex Application with Subinstances
-
-```python
-from fastshell import FastShell
-from pydantic import BaseModel
-import asyncio
-
-# Main application
-app = FastShell("DevTools", "Development tools CLI")
-
-# Database subinstance
-db = app.subinstance("db", "Database operations")
-
-class MigrationArgs(BaseModel):
-    direction: str = "up"  # up or down
-    steps: int = 1
-
-@db.command()
-async def migrate(args: MigrationArgs):
-    """Run database migrations"""
-    await asyncio.sleep(1)  # Simulate migration
-    return f"Ran {args.steps} migration(s) {args.direction}"
-
-@db.command()
-def seed():
-    """Seed database with test data"""
-    return "Database seeded successfully"
-
-# Docker subinstance
-docker = app.subinstance("docker", "Docker operations")
-
-@docker.command()
-def build(tag: str, dockerfile: str = "Dockerfile"):
-    """Build Docker image"""
-    return f"Building image {tag} from {dockerfile}"
-
-@docker.command()
-def run(image: str, port: int = 8000, detached: bool = False):
-    """Run Docker container"""
-    mode = "detached" if detached else "interactive"
-    return f"Running {image} on port {port} in {mode} mode"
-
-if __name__ == "__main__":
-    app.run()
-```
-
-Usage examples:
+### Command Not Found
 
 ```bash
-# Interactive mode
-$ python devtools.py
-DevTools> db migrate --direction up --steps 3
-DevTools> docker build myapp --dockerfile Dockerfile.prod
-DevTools> docker run myapp --port 3000 --detached
-
-# CLI mode
-$ python devtools.py db migrate --steps 2
-$ python devtools.py docker build myapp
+MyApp> unknown-command
+Command not found: unknown-command
 ```
-
-### Integration with External APIs
-
-```python
-import httpx
-from fastshell import FastShell
-from pydantic import BaseModel
-
-app = FastShell("WeatherCLI", "Weather information CLI")
-
-class WeatherArgs(BaseModel):
-    city: str
-    units: str = "metric"  # metric, imperial, kelvin
-
-@app.command()
-async def current(args: WeatherArgs):
-    """Get current weather for a city"""
-    async with httpx.AsyncClient() as client:
-        # Simulate API call
-        await asyncio.sleep(0.5)
-        return f"Current weather in {args.city}: 22°C, Sunny ({args.units} units)"
-
-@app.command()
-async def forecast(city: str, days: int = 5):
-    """Get weather forecast"""
-    async with httpx.AsyncClient() as client:
-        await asyncio.sleep(0.5)
-        return f"{days}-day forecast for {city}: Mostly sunny"
-
-if __name__ == "__main__":
-    app.run()
-```
-
-## Best Practices
-
-1. **Use Pydantic Models**: For complex commands with multiple parameters
-2. **Provide Descriptions**: Add docstrings and field descriptions for better help
-3. **Handle Errors Gracefully**: Use try-catch blocks for external operations
-4. **Use Async When Needed**: For I/O operations, API calls, etc.
-5. **Organize with Subinstances**: Group related commands logically
-6. **Test Both Modes**: Ensure commands work in both CLI and interactive modes
-7. **Validate Input**: Use Pydantic validators for complex validation rules
 
 ## Advanced Features
 
-### Custom Validation
+### Custom Prompt
 
-```python
-from pydantic import BaseModel, validator
+The prompt shows current directory when system commands are enabled:
 
-class ServerArgs(BaseModel):
-    port: int
-    host: str = "localhost"
-
-    @validator('port')
-    def port_must_be_valid(cls, v):
-        if not 1 <= v <= 65535:
-            raise ValueError('Port must be between 1 and 65535')
-        return v
+```bash
+[/current/directory] MyApp> 
 ```
 
-### Environment Integration
+### Keyboard Shortcuts
+
+- `Tab`: Auto-completion
+- `Ctrl+C`: Interrupt current command/return to prompt
+- `Up/Down`: Command history navigation
+- `Ctrl+D` or `EOF`: Exit shell
+
+### CLI vs Interactive Mode
 
 ```python
-import os
-from pydantic import BaseModel, Field
+# CLI mode - single command execution
+app.run(["hello", "John"])
 
-class DatabaseArgs(BaseModel):
-    url: str = Field(default_factory=lambda: os.getenv('DATABASE_URL', 'sqlite:///app.db'))
-    debug: bool = Field(default_factory=lambda: os.getenv('DEBUG', 'false').lower() == 'true')
+# Interactive mode - persistent shell
+app.run()  # or app.run([])
 ```
 
-### Custom Output Formatting
+### Root Commands
+
+Root commands are available in CLI mode without specifying the command name:
 
 ```python
-import json
-from rich.console import Console
-from rich.table import Table
+@app.command(root=True)
+def main_action(file: str):
+    """Main application action"""
+    pass
 
-console = Console()
-
-@app.command()
-def list_users():
-    """List all users with rich formatting"""
-    table = Table(title="Users")
-    table.add_column("ID", style="cyan")
-    table.add_column("Name", style="green")
-    table.add_column("Email", style="yellow")
-
-    # Add sample data
-    table.add_row("1", "John Doe", "john@example.com")
-    table.add_row("2", "Jane Smith", "jane@example.com")
-
-    console.print(table)
+# Usage in CLI mode:
+# python myapp.py input.txt
+# Instead of: python myapp.py main-action input.txt
 ```
 
-This completes the comprehensive API documentation for FastShell. The framework provides a powerful and flexible way to build command-line applications with modern Python features.
+### Custom Styling
+
+Customize syntax highlighting colors:
+
+```python
+from prompt_toolkit.styles import Style
+
+app = FastShell("MyApp")
+app.style = Style.from_dict({
+    'command': '#66aaff',
+    'argument': '#66dd66', 
+    'string': '#ffcc66',
+    'number': '#dd66dd',
+    'text': '#cccccc',
+})
+```
+
+### Error Recovery
+
+FastShell gracefully handles:
+- Ctrl+C interruptions
+- Invalid input
+- System command failures
+- Network timeouts in async commands
+
+## Best Practices
+
+1. **Use descriptive docstrings** - They appear in help text
+2. **Provide sensible defaults** - Makes commands easier to use
+3. **Use type hints** - Enables automatic validation
+4. **Group related commands** - Use subinstances for organization
+5. **Handle errors gracefully** - Provide meaningful error messages
+6. **Test both CLI and interactive modes** - Ensure consistent behavior
+
+## Examples
+
+See the `userdocs/EXAMPLES.md` file for comprehensive examples and use cases.

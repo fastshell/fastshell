@@ -4,7 +4,7 @@ import shlex
 import sys
 import os
 import platform
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Type
 from pydantic import BaseModel, ValidationError
 from prompt_toolkit import PromptSession
 from prompt_toolkit.styles import Style
@@ -87,43 +87,6 @@ class InteractiveSystemCommand:
             return 1
         finally:
             self.process = None
-
-    def is_interactive_command(self, command: str) -> bool:
-        """Check if a command is likely to be interactive"""
-        interactive_commands = {
-            # Editors
-            "vim",
-            "vi",
-            "nano",
-            "emacs",
-            "code",
-            # Interactive tools
-            "top",
-            "htop",
-            "less",
-            "more",
-            "man",
-            # Interactive shells
-            "bash",
-            "sh",
-            "zsh",
-            "fish",
-            "powershell",
-            "cmd",
-            # Interactive programs
-            "python",
-            "node",
-            "irb",
-            "mysql",
-            "psql",
-            # System tools
-            "fdisk",
-            "parted",
-            "cfdisk",
-        }
-
-        cmd_name = command.split()[0] if command.split() else ""
-        return cmd_name.lower() in interactive_commands
 
 
 class PersistentShell:
@@ -532,14 +495,52 @@ class FastShell:
             self.subinstances[name] = sub
         return self.subinstances[name]
 
-    def print(self, text: Any):
-        """Safe print method that handles various data types"""
-        if isinstance(text, (list, dict)):
-            import json
+    def _print_tree(
+        self,
+        d: Sequence[Any] | Mapping[Any, Any],
+        prefix: str = "",
+        as_tree: bool = False,
+        save_quotes: bool = False,
+    ):
+        items: list[tuple[Any, Any]] = (
+            list(d.items()) if isinstance(d, Mapping) else [(i, None) for i in d]
+        )
+        for i, (name, sub) in enumerate(items):
+            is_last = i == len(items) - 1
+            connector = "└── " if is_last else "├── "
+            print(prefix + connector + str(name), end="")
+            if isinstance(sub, (list, dict)) or (
+                as_tree
+                and isinstance(sub, (Sequence, Mapping))
+                and not isinstance(sub, (str, bytes))
+            ):
+                print()
+                new_prefix = prefix + ("    " if is_last else "│   ")
+                self._print_tree(sub, new_prefix)
+            else:
+                if save_quotes and isinstance(sub, str):
+                    sub = f'"{sub}"'
+                print(": " + str(sub) if sub is not None else "")
 
-            print(json.dumps(text, indent=2, ensure_ascii=False))
+    def print(
+        self,
+        text: Any,
+        tree_view: bool = False,
+        save_quotes: bool = False,
+        encoding: str = "utf-8",
+    ):
+        """Safe print method that handles various data types"""
+        if isinstance(text, (list, dict)) or (
+            tree_view and isinstance(text, (Sequence, Mapping))
+        ):
+            self._print_tree(text, as_tree=tree_view)
         else:
-            print(str(text))
+            if isinstance(text, bytes):
+                text = text.decode(encoding)
+            if isinstance(text, str) and save_quotes:
+                print(f'"{text}"')
+            else:
+                print(str(text))
 
     def _create_model_from_signature(self, func: Callable) -> Type[BaseModel]:
         """Create a Pydantic model from function signature"""
@@ -570,6 +571,40 @@ class FastShell:
 
         return model_class
 
+    def _parse_command_line(self, command_line: str) -> tuple[str, str]:
+        """
+        Parse command line into command name and arguments string.
+        Preserves quotes in arguments.
+        Returns: (command_name, arguments_string)
+        """
+        command_line = command_line.strip()
+        if not command_line:
+            return "", ""
+
+        # Try to extract the first word (command name) while preserving the rest
+        try:
+            # Use shlex to properly handle quotes for the first token only
+            tokens = shlex.split(command_line)
+            if not tokens:
+                return "", ""
+
+            command_name = tokens[0]
+
+            # Find where the command name ends in the original string
+            # This preserves the original formatting of arguments
+            cmd_end_pos = command_line.find(command_name) + len(command_name)
+            arguments_string = command_line[cmd_end_pos:].lstrip()
+
+            return command_name, arguments_string
+
+        except ValueError:
+            # If shlex fails, fall back to simple split
+            parts = command_line.split(None, 1)
+            if len(parts) == 1:
+                return parts[0], ""
+            else:
+                return parts[0], parts[1]
+
     async def execute_command(
         self, command_line: str, interactive_mode: bool = False
     ) -> Any:
@@ -577,6 +612,13 @@ class FastShell:
         if not command_line.strip():
             return
 
+        # Parse command line to get command name and preserve arguments
+        command_name, arguments_string = self._parse_command_line(command_line)
+
+        if not command_name:
+            return
+
+        # For argument parsing, we still need tokens, but we'll be more careful
         try:
             tokens = shlex.split(command_line)
         except ValueError as e:
@@ -587,14 +629,13 @@ class FastShell:
             return
 
         # Check for subinstance
-        if tokens[0] in self.subinstances:
-            sub_command = " ".join(tokens[1:])
-            return await self.subinstances[tokens[0]].execute_command(
-                sub_command, interactive_mode
+        if command_name in self.subinstances:
+            # For subinstances, pass the arguments string directly
+            return await self.subinstances[command_name].execute_command(
+                arguments_string, interactive_mode
             )
 
         # Check for built-in commands
-        command_name = tokens[0]
         if command_name.lower() == "help":
             # Help command can take an optional command name as argument
             if len(tokens) > 1:
@@ -611,37 +652,49 @@ class FastShell:
             if not self.allow_system_commands:
                 self.print("System commands are not allowed in this shell.")
                 return
-            if len(tokens) < 2:
+            if not arguments_string.strip():
                 self.print("Usage: exec <system_command> [args...]")
                 return
 
-            # Execute the system command with remaining tokens
-            system_tokens = tokens[1:]
-            return await self._execute_system_command(system_tokens)
+            # For exec command, use the arguments string directly to preserve quotes
+            return await self._execute_system_command_raw(arguments_string)
         elif command_name.lower() in ["exit", "quit"]:
             if not self.parent:
                 # For main shell, we can't actually exit from execute_command
                 # This is handled in run_interactive
-                self.print("Use Ctrl+C or the interactive shell to exit.")
+                self.print("Exit is not possible in CLI mode.")
             else:
                 self.print("Exit commands are not available in subinstances.")
             return
 
         # Check for registered command
         if command_name in self.commands:
-            return await self._execute_registered_command(command_name, tokens[1:])
+            # For registered commands, we need to parse arguments more carefully
+            return await self._execute_registered_command_with_quotes(
+                command_name, arguments_string, tokens[1:]
+            )
+
+        # Try command name with underscores (convert hyphens to underscores)
+        command_name_underscore = command_name.replace("-", "_")
+        if command_name_underscore in self.commands:
+            return await self._execute_registered_command_with_quotes(
+                command_name_underscore, arguments_string, tokens[1:]
+            )
 
         # In CLI mode, check for root commands after direct commands
         if not interactive_mode:
             # Check for root commands (only in CLI mode)
             for cmd_name, cmd_info in self.commands.items():
                 if cmd_info.root:
-                    return await self._execute_registered_command(cmd_name, tokens)
+                    return await self._execute_registered_command_with_quotes(
+                        cmd_name, command_line, tokens
+                    )
 
         # Try system command if allowed (only in interactive mode)
         if self.allow_system_commands and interactive_mode:
             try:
-                return await self._execute_system_command(tokens)
+                # For system commands, use the original command line to preserve quotes
+                return await self._execute_system_command_raw(command_line)
             except asyncio.CancelledError:
                 # Handle cancelled system commands gracefully
                 print()  # Add a newline after interruption
@@ -727,6 +780,61 @@ class FastShell:
         # Provide general help
         self.print(f"\nUse 'help {command_name}' for detailed usage information.")
 
+    async def _execute_registered_command_with_quotes(
+        self, command_name: str, arguments_string: str, fallback_tokens: List[str]
+    ) -> Any:
+        """Execute a registered command while trying to preserve quotes in arguments"""
+        cmd_info = self.commands[command_name]
+
+        try:
+            # Try to parse arguments from the original string to preserve quotes
+            try:
+                parsed_args = self.parser.parse_args_from_string(
+                    arguments_string, cmd_info.model
+                )
+            except Exception:
+                # If string parsing fails, fall back to token-based parsing
+                parsed_args = self.parser.parse_args(fallback_tokens, cmd_info.model)
+
+            # Check if function expects a model or individual parameters
+            sig = inspect.signature(cmd_info.func)
+            params = list(sig.parameters.values())
+
+            # Filter out 'self' parameter
+            params = [p for p in params if p.name != "self"]
+
+            if (
+                len(params) == 1
+                and params[0].annotation != inspect.Parameter.empty
+                and hasattr(params[0].annotation, "__bases__")
+                and BaseModel in params[0].annotation.__bases__
+            ):
+                # Function expects a model
+                if cmd_info.is_async:
+                    result = await cmd_info.func(parsed_args)
+                else:
+                    result = cmd_info.func(parsed_args)
+            else:
+                # Function expects individual parameters
+                kwargs = parsed_args.model_dump()
+                if cmd_info.is_async:
+                    result = await cmd_info.func(**kwargs)
+                else:
+                    result = cmd_info.func(**kwargs)
+
+            # Handle return value
+            if result is not None:
+                self.print(result)
+
+            return result
+
+        except ValidationError as e:
+            self._print_validation_error(e, command_name, fallback_tokens)
+        except MultiplePossibleMatchError as e:
+            self.print(f"Ambiguous arguments: {e}")
+        except Exception as e:
+            self.print(f"Error executing command: {e}")
+
     async def _execute_registered_command(
         self, command_name: str, args: List[str]
     ) -> Any:
@@ -776,15 +884,94 @@ class FastShell:
         except Exception as e:
             self.print(f"Error executing command: {e}")
 
+    async def _execute_system_command_raw(self, command: str) -> Any:
+        """Execute a system command with intelligent quote handling"""
+        try:
+            # For system commands, we need to be smart about quote handling:
+            # - Remove outer wrapping quotes: "Hello" -> Hello
+            # - Preserve embedded quotes: H"embedded"W -> H"embedded"W
+            processed_command = self._process_system_command_quotes(command)
+            
+            # Use persistent shell if available (main shell with system commands enabled)
+            if self.persistent_shell is not None:
+                exit_code, stdout, stderr = await self.persistent_shell.execute(processed_command)
+
+                # Print output if any
+                if stdout:
+                    print(stdout)
+                if stderr:
+                    print(stderr, file=sys.stderr)
+
+                return exit_code
+            else:
+                # Fallback to the original implementation for subinstances
+                try:
+                    tokens = shlex.split(command)
+                except ValueError:
+                    tokens = command.split()
+                return await self._execute_system_command_fallback(tokens)
+
+        except Exception as e:
+            self.print(f"Error executing system command: {e}")
+            return 1
+    
+    def _process_system_command_quotes(self, command: str) -> str:
+        """Process quotes in system commands intelligently"""
+        import re
+        
+        # Split command into tokens while preserving structure
+        tokens = []
+        current_token = ""
+        i = 0
+        
+        while i < len(command):
+            char = command[i]
+            
+            if char in ' \t':
+                if current_token:
+                    tokens.append(self._process_token_quotes(current_token))
+                    current_token = ""
+                # Skip whitespace
+                while i < len(command) and command[i] in ' \t':
+                    i += 1
+                continue
+            else:
+                current_token += char
+            
+            i += 1
+        
+        if current_token:
+            tokens.append(self._process_token_quotes(current_token))
+        
+        return " ".join(tokens)
+    
+    def _process_token_quotes(self, token: str) -> str:
+        """Process quotes in a single token"""
+        # If the token is completely wrapped in quotes, remove them
+        if ((token.startswith('"') and token.endswith('"') and len(token) > 1) or
+            (token.startswith("'") and token.endswith("'") and len(token) > 1)):
+            # Check if it's truly wrapped (no unescaped quotes inside)
+            inner = token[1:-1]
+            quote_char = token[0]
+            
+            # Simple check: if there are no unescaped quotes of the same type inside, it's wrapped
+            if quote_char == '"':
+                if '\\"' not in inner and '"' not in inner:
+                    return inner
+            else:  # single quote
+                if "\\'" not in inner and "'" not in inner:
+                    return inner
+        
+        # Otherwise, return as-is (preserves embedded quotes)
+        return token
+
     async def _execute_system_command(self, tokens: List[str]) -> Any:
         """Execute a system command with persistent shell context"""
         try:
             command = " ".join(tokens)
 
             # Check if this is an interactive command
-            if self.interactive_cmd and self.interactive_cmd.is_interactive_command(
-                command
-            ):
+            if self.interactive_cmd:
                 # Execute interactively with full keyboard support
                 try:
                     return await self.interactive_cmd.execute_interactive(command)
@@ -794,7 +981,7 @@ class FastShell:
                     return 130  # Standard exit code for Ctrl+C
 
             # Use persistent shell if available (main shell with system commands enabled)
-            if self.persistent_shell is not None:
+            if self.persistent_shell:
                 exit_code, stdout, stderr = await self.persistent_shell.execute(command)
 
                 # Print output if any
@@ -844,6 +1031,10 @@ class FastShell:
 
     async def run_interactive(self):
         """Run the interactive shell"""
+        if self.parent:
+            self.print("Subinstance is not able to be started interactively.")
+            return
+
         # Set interactive mode for completer
         self.set_interactive_mode(True)
 
@@ -855,13 +1046,9 @@ class FastShell:
         if self.description:
             self.print(self.description)
 
-        # Only show exit instructions for main shell, not subinstances
-        if not self.parent:
-            self.print("Type 'exit' or 'quit' to exit, 'help' for help.")
-            if self.allow_system_commands:
-                self.print("System commands are enabled with persistent context.")
-        else:
-            self.print("Type 'help' for help.")
+        self.print("Type 'exit' or 'quit' to exit, 'help' for help.")
+        if self.allow_system_commands:
+            self.print("System commands are enabled with persistent context.")
 
         try:
             while True:
@@ -886,12 +1073,7 @@ class FastShell:
 
                     # Only allow exit/quit for main shell, not subinstances
                     if command_line.strip().lower() in ["exit", "quit"]:
-                        if not self.parent:
-                            break
-                        else:
-                            self.print(
-                                "Exit commands are not available in subinstances. Use Ctrl+C to return to main shell."
-                            )
+                        break
                     else:
                         # Use execute_command for all other commands, including help
                         try:
