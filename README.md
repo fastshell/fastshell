@@ -7,6 +7,7 @@ A FastAPI-like framework for building interactive shell applications with fish-l
 - **FastAPI-like syntax** - Familiar decorator-based command registration
 - **Pydantic integration** - Type-safe argument parsing with validation
 - **Interactive shell** - Fish-like experience with autocompletion and syntax highlighting
+- **System command context** - Persistent shell with directory tracking and environment preservation
 - **Async support** - Full support for async/await commands
 - **Subcommands** - Organize commands into logical groups
 - **System commands** - Optional integration with system executables
@@ -82,6 +83,14 @@ fastshell
 - Argument flag completion with type information
 - Context-aware suggestions
 
+### System Command Context
+- **Persistent Shell**: Maintains background shell session for context preservation
+- **Directory Tracking**: Current directory displayed in prompt and preserved across commands
+- **Environment Variables**: Shell environment changes persist between commands
+- **Cross-Platform**: Works with cmd.exe on Windows and standard shells on Unix
+- **Encoding Support**: Proper GBK encoding support for Chinese characters on Windows
+- **Clean Output**: Intelligent filtering removes command echo and control information
+
 ### Syntax Highlighting
 - Commands highlighted in blue
 - Arguments in green
@@ -108,6 +117,22 @@ def read_file(path: str):
 ```
 
 Usage: `file read myfile.txt`
+
+### System Command Context Example
+```bash
+# Notice the current directory in the prompt
+[/home/user/project] MyApp> pwd
+/home/user/project
+
+[/home/user/project] MyApp> cd /tmp
+[/tmp] MyApp> echo "test" > file.txt
+[/tmp] MyApp> cat file.txt
+test
+
+[/tmp] MyApp> cd ~/project
+[/home/user/project] MyApp> ls
+README.md  src/  tests/
+```
 
 ## Development
 

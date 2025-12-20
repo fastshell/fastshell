@@ -29,6 +29,7 @@ packages = [{include = "fastshell"}]
 python = ">=3.9,<4.0"
 pydantic = "^2.12.5"
 prompt-toolkit = "^3.0.52"
+toml = "^0.10.2"
 
 [tool.poetry.scripts]
 fastshell = "fastshell.cli:main"
