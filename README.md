@@ -20,21 +20,25 @@ from pydantic import BaseModel
 
 app = FastShell(name="MyApp", description="My awesome shell app")
 
-class Arguments(BaseModel):
+class Arguments(BaseModel): 
     name: str
     age: int = 18
+    # Or you can put them directly in argument defintion.
 
+# The root argument made it able to be called directly in CLI mode.
 @app.command(name='hello', root=True)
 def hello(args: Arguments):
-    app.print(f'Hello, {args.name}! You are {args.age} years old.')
+    return f'Hello, {args.name}! You are {args.age} years old.'
 
 if __name__ == "__main__":
     app.run()
 ```
 
-## Command Usage Examples
+### Command Usage Examples
 
 The above command can be called in multiple ways:
+
+#### In interactive mode
 
 ```bash
 # Positional arguments
@@ -50,83 +54,26 @@ hello --name John --age 25
 hello John  # age defaults to 18
 ```
 
+#### In CLI Mode
+
+```bash
+# Same with interactive, but
+python3 ./main.py hello John
+# This also works
+python3 ./main.py John
+```
+
+
 ## Installation
 
-### Using Poetry (Recommended)
 ```bash
-# Install Poetry if you haven't already
-curl -sSL https://install.python-poetry.org | python3 -
-
-# Clone and install
-git clone <repository-url>
-cd fastshell
-poetry install
-
-# Activate the environment
-poetry shell
+pip3 install fastshell
 ```
-
-### Using pip (Traditional)
-```bash
-pip install -r requirements.txt
-```
-
-### Development Installation
-```bash
-# Install with development dependencies
-poetry install
-
-# Set up pre-commit hooks
-poetry run pre-commit install
-```
-
-## Running Examples
 
 ### Quick Start
 ```bash
-# With Poetry
-poetry run python example.py
-
-# With pip
-python example.py
-```
-
-### Comprehensive Demo
-```bash
-# With Poetry
-poetry run python demos/final_fastshell_demo.py
-
-# With pip
-python demos/final_fastshell_demo.py
-```
-
-### Feature-Specific Demos
-```bash
-# With Poetry
-poetry run python demos/completion_demo.py          # Autocompletion features
-poetry run python demos/syntax_highlighting_demo.py # Syntax highlighting
-poetry run python demos/pydantic_features_demo.py   # Pydantic integration
-poetry run python demos/system_command_demo.py      # System command integration
-
-# With pip - same commands without 'poetry run'
-```
-
-### CLI Tool
-```bash
-# After Poetry installation
-poetry run fastshell
-
-# Or activate shell first
-poetry shell
 fastshell
 ```
-
-The interactive shell supports commands like:
-- `hello John Doe 25`
-- `echo "Hello World"`
-- `add 5 3`
-- `sleep hrs 1`
-- `file write test.txt "Hello World"`
 
 ## Features in Detail
 
@@ -165,46 +112,16 @@ Usage: `file read myfile.txt`
 ## Development
 
 ### Using Poetry
+
 ```bash
 # Install development dependencies
 poetry install
 
-# Run tests
-poetry run pytest
-
-# Format code
-poetry run black .
-poetry run isort .
-
-# Type checking
-poetry run mypy fastshell/
-
-# Run all quality checks
-make quality
+# Activate virtualenv
+poetry env activate
 
 # Build package
 poetry build
-```
-
-### Using Make (Poetry required)
-```bash
-# On Linux/macOS
-make help           # Show all available commands
-make install-dev    # Install development dependencies
-make test           # Run tests
-make format         # Format code
-make lint           # Run linting
-make type-check     # Run type checking
-make build          # Build package
-
-# On Windows (PowerShell)
-.\make.ps1 help           # Show all available commands
-.\make.ps1 install-dev    # Install development dependencies
-.\make.ps1 test           # Run tests
-.\make.ps1 format         # Format code
-.\make.ps1 lint           # Run linting
-.\make.ps1 type-check     # Run type checking
-.\make.ps1 build          # Build package
 ```
 
 ## Project Structure
@@ -212,23 +129,12 @@ make build          # Build package
 ```
 fastshell/
 ├── fastshell/          # Core framework package
-├── demos/              # Interactive demonstrations
-├── tests/              # Comprehensive test suite
-├── docs/               # Documentation and guides
 ├── example.py          # Quick start example
 └── README.md           # This file
 ```
 
 See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed information.
 
-## Documentation
-
-- **[docs/USAGE.md](docs/USAGE.md)** - Comprehensive usage guide
-- **[docs/SUMMARY.md](docs/SUMMARY.md)** - Complete development history
-- **[docs/](docs/)** - Feature-specific documentation
-- **[demos/](demos/)** - Interactive examples and demonstrations
-- **[tests/](tests/)** - Test suite for all features
-
 ## License
 
-MIT License
+[MIT License](https://mit-license.org/)
