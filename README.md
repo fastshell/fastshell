@@ -1,4 +1,6 @@
-# FastShell
+![](./favicon.png)
+
+# <center> FastShell </center>
 
 A FastAPI-like framework for building interactive shell applications with fish-like features including autocompletion, syntax highlighting, and history-based suggestions.
 
@@ -21,7 +23,7 @@ from pydantic import BaseModel
 
 app = FastShell(name="MyApp", description="My awesome shell app")
 
-class Arguments(BaseModel): 
+class Arguments(BaseModel):
     name: str
     age: int = 18
     # Or you can put them directly in argument defintion.
@@ -64,14 +66,14 @@ python3 ./main.py hello John
 python3 ./main.py John
 ```
 
-
 ## Installation
 
 ```bash
-pip3 install fastshell
+pip3 install fastshell==1.0.0a2
 ```
 
 ### Quick Start
+
 ```bash
 fastshell
 ```
@@ -79,11 +81,13 @@ fastshell
 ## Features in Detail
 
 ### Autocompletion
+
 - Command name completion
 - Argument flag completion with type information
 - Context-aware suggestions
 
 ### System Command Context
+
 - **Persistent Shell**: Maintains background shell session for context preservation
 - **Directory Tracking**: Current directory displayed in prompt and preserved across commands
 - **Environment Variables**: Shell environment changes persist between commands
@@ -92,6 +96,7 @@ fastshell
 - **Clean Output**: Intelligent filtering removes command echo and control information
 
 ### Syntax Highlighting
+
 - Commands highlighted in blue
 - Arguments in green
 - Strings in yellow
@@ -99,12 +104,14 @@ fastshell
 - Flags in cyan
 
 ### Argument Parsing
+
 - Automatic conversion between flag names and field names (`--first-name` ↔ `first_name`)
 - Type validation using Pydantic
 - Error handling for ambiguous arguments
 - Support for boolean flags
 
 ### Subcommands
+
 Create command groups for better organization:
 
 ```python
@@ -119,6 +126,7 @@ def read_file(path: str):
 Usage: `file read myfile.txt`
 
 ### System Command Context Example
+
 ```bash
 # Notice the current directory in the prompt
 [/home/user/project] MyApp> pwd

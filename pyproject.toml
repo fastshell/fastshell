@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastshell"
-version = "1.0.0-alpha"
+version = "1.0.0a2"
 description = "A FastAPI-like framework for building interactive shell applications"
 authors = ["originalFactor <2438926613@qq.com>"]
 readme = "README.md"
