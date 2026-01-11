@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 github.com/fastshell
+
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 # FastShell Project Structure
 
 ```
@@ -23,7 +30,9 @@ fastshell/
 ## Directory Purposes
 
 ### `/fastshell/` - Core Package
+
 Contains the main FastShell framework implementation:
+
 - **core.py**: Main FastShell class, command execution, interactive shell
 - **parser.py**: Argument parsing with Pydantic integration
 - **completer.py**: Context-aware autocompletion system
@@ -35,6 +44,7 @@ Contains the main FastShell framework implementation:
 ## Key Files
 
 ### Root Level
+
 - **README.md**: Project overview, installation, quick start
 - **pyproject.toml**: Poetry configuration (modern Python packaging)
 - **setup.py**: Legacy setuptools configuration (compatibility)
@@ -42,6 +52,7 @@ Contains the main FastShell framework implementation:
 - **example.py**: Minimal working example for quick testing
 
 ### Framework Core
+
 - **fastshell/core.py**: 700+ lines, main framework implementation
 - **fastshell/completer.py**: 200+ lines, autocompletion logic
 - **fastshell/parser.py**: 100+ lines, argument parsing
@@ -51,6 +62,7 @@ Contains the main FastShell framework implementation:
 ## Development Workflow
 
 ### Modern (Poetry)
+
 1. **Setup**: `poetry install` - Install dependencies
 2. **Development**: `poetry shell` - Activate environment
 3. **Testing**: `poetry run pytest` or `make test`

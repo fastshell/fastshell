@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 github.com/fastshell
+
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 # FastShell Documentation
 
 Welcome to the FastShell documentation! FastShell is a modern Python framework for building interactive command-line applications with FastAPI-like syntax.
@@ -5,7 +12,9 @@ Welcome to the FastShell documentation! FastShell is a modern Python framework f
 ## 📚 Documentation Overview
 
 ### [Getting Started](GETTING_STARTED.md)
+
 New to FastShell? Start here! This guide covers:
+
 - Installation and setup
 - Your first FastShell application
 - Basic concepts and features
@@ -13,7 +22,9 @@ New to FastShell? Start here! This guide covers:
 - Common patterns and next steps
 
 ### [API Documentation](API_DOCUMENTATION.md)
+
 Complete reference for all FastShell features:
+
 - Core classes and methods
 - Decorators and command registration
 - Argument parsing and validation
@@ -23,7 +34,9 @@ Complete reference for all FastShell features:
 - Error handling and best practices
 
 ### [Examples](EXAMPLES.md)
+
 Real-world examples and use cases:
+
 - Basic utilities (calculator, text processing)
 - File management tools
 - Development workflow automation
@@ -33,7 +46,9 @@ Real-world examples and use cases:
 - System monitoring utilities
 
 ### [Best Practices](BEST_PRACTICES.md)
+
 Production-ready development guidelines:
+
 - Project structure and organization
 - Command design principles
 - Argument handling patterns
@@ -101,18 +116,21 @@ FastShell is perfect for:
 ## 🔧 Advanced Topics
 
 ### Interactive Features
+
 - Syntax highlighting with customizable colors
 - Tab completion for commands, arguments, and file paths
 - Command history with search
 - Built-in help system with automatic documentation
 
 ### System Integration
+
 - Persistent shell context for system commands
 - Cross-platform command execution
 - Interactive command support (vim, python, etc.)
 - Directory and environment variable persistence
 
 ### Extensibility
+
 - Plugin architecture through subinstances
 - Custom validators and type converters
 - Configurable output formatting
@@ -121,6 +139,7 @@ FastShell is perfect for:
 ## 🤝 Contributing
 
 FastShell is designed to be extensible and community-friendly. Whether you're:
+
 - Building applications with FastShell
 - Contributing to the framework
 - Creating plugins and extensions

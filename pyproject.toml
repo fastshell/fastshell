@@ -1,12 +1,19 @@
 [tool.poetry]
 name = "fastshell"
-version = "1.0.0a2"
+version = "1.0.0a3"
 description = "A FastAPI-like framework for building interactive shell applications"
-authors = ["originalFactor <2438926613@qq.com>"]
+authors = ["github.com/fastshell <2438926613@qq.com>"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/fastshell/fastshell"
-keywords = ["shell", "cli", "interactive", "fastapi", "pydantic", "autocompletion"]
+keywords = [
+    "shell",
+    "cli",
+    "interactive",
+    "fastapi",
+    "pydantic",
+    "autocompletion",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -23,7 +30,7 @@ classifiers = [
     "Topic :: System :: Shells",
     "Topic :: Terminals",
 ]
-packages = [{include = "fastshell"}]
+packages = [{ include = "fastshell" }]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
@@ -32,7 +39,7 @@ prompt-toolkit = "^3.0.52"
 toml = "^0.10.2"
 
 [tool.poetry.scripts]
-fastshell = "fastshell.cli:main"
+fastshell = "fastshell:main"
 
 [build-system]
 requires = ["poetry-core"]

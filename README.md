@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 github.com/fastshell
+
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 ![](./favicon.png)
 
 # <center> FastShell </center>
@@ -69,7 +76,7 @@ python3 ./main.py John
 ## Installation
 
 ```bash
-pip3 install fastshell==1.0.0a2
+pip3 install fastshell==1.0.0a3
 ```
 
 ### Quick Start

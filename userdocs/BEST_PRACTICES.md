@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 github.com/fastshell
+
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 # FastShell Best Practices
 
 This guide covers best practices for building robust, maintainable, and user-friendly CLI applications with FastShell.

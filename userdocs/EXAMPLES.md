@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 github.com/fastshell
+
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 # FastShell Examples
 
 This document provides comprehensive examples of FastShell applications, from simple utilities to complex multi-command tools.

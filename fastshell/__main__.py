@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 github.com/fastshell
+# 
+# This software is released under the MIT License.
+# https://opensource.org/licenses/MIT
+
 """
 FastShell CLI entry point
 """
@@ -33,7 +37,7 @@ def main(args: Optional[List[str]] = None) -> None:
         files = os.listdir(parent_dir)
         if "pyproject.toml" in files:
             pyproject_path = parent_dir / "pyproject.toml"
-            with open(pyproject_path, "r") as f:
+            with open(pyproject_path, "r", encoding="utf-8") as f:
                 data = load(f)
                 version = data["tool"]["poetry"]["version"]
                 return f"FastShell v{version}"
@@ -44,7 +48,7 @@ def main(args: Optional[List[str]] = None) -> None:
             None,
         ):
             metadata_path = parent_dir / x / "METADATA"
-            with open(metadata_path, "r") as f:
+            with open(metadata_path, "r", encoding="utf-8") as f:
                 data = f.read().split("\n")
                 version = next(filter(lambda x: x.startswith("Version:"), data), None)
                 if version:

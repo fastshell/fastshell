@@ -1,3 +1,8 @@
+# Copyright (c) 2026 github.com/fastshell
+# 
+# This software is released under the MIT License.
+# https://opensource.org/licenses/MIT
+
 from typing import Iterable, List
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document

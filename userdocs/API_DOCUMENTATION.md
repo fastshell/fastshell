@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 github.com/fastshell
+
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 # FastShell API Documentation
 
 FastShell is a FastAPI-like framework for building interactive command-line applications with shell-like interfaces.
@@ -55,7 +62,7 @@ class FastShell:
     ):
         """
         Initialize a FastShell application.
-        
+
         Args:
             name: Application name displayed in prompts
             description: Application description shown in help
@@ -282,6 +289,7 @@ MyApp> exec echo "force system command"
 ### Persistent Context
 
 System commands maintain persistent context:
+
 - Current directory changes persist
 - Environment variables persist
 - Command history is maintained
@@ -386,7 +394,7 @@ Command not found: unknown-command
 The prompt shows current directory when system commands are enabled:
 
 ```bash
-[/current/directory] MyApp> 
+[/current/directory] MyApp>
 ```
 
 ### Keyboard Shortcuts
@@ -431,7 +439,7 @@ from prompt_toolkit.styles import Style
 app = FastShell("MyApp")
 app.style = Style.from_dict({
     'command': '#66aaff',
-    'argument': '#66dd66', 
+    'argument': '#66dd66',
     'string': '#ffcc66',
     'number': '#dd66dd',
     'text': '#cccccc',
@@ -441,6 +449,7 @@ app.style = Style.from_dict({
 ### Error Recovery
 
 FastShell gracefully handles:
+
 - Ctrl+C interruptions
 - Invalid input
 - System command failures

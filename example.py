@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 github.com/fastshell
+# 
+# This software is released under the MIT License.
+# https://opensource.org/licenses/MIT
+
 """
 Example FastShell application demonstrating the framework usage
 """

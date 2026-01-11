@@ -1,7 +1,6 @@
 {
   "python-envs.defaultEnvManager": "ms-python.python:system",
   "python-envs.pythonProjects": [],
-  "licenser.author": "",
   "licenser.license": "MIT",
   "licenser.projectName": "fastshell"
 }

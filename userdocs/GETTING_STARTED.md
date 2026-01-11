@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 github.com/fastshell
+
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 # Getting Started with FastShell
 
 FastShell is a modern Python framework for building interactive command-line applications with FastAPI-like syntax. This guide will help you get started quickly.
