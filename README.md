@@ -76,7 +76,7 @@ python3 ./main.py John
 ## Installation
 
 ```bash
-pip3 install fastshell==1.0.0a3
+pip3 install fastshell==1.0.0a4
 ```
 
 ### Quick Start

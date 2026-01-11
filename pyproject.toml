@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastshell"
-version = "1.0.0a3"
+version = "1.0.0a4"
 description = "A FastAPI-like framework for building interactive shell applications"
 authors = ["github.com/fastshell <2438926613@qq.com>"]
 readme = "README.md"
@@ -39,7 +39,7 @@ prompt-toolkit = "^3.0.52"
 toml = "^0.10.2"
 
 [tool.poetry.scripts]
-fastshell = "fastshell:main"
+fastshell = "fastshell.__main__:main"
 
 [build-system]
 requires = ["poetry-core"]
